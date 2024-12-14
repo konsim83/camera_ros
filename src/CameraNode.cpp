@@ -104,6 +104,7 @@ private:
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_image;
   rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr pub_image_compressed;
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr pub_ci;
+  rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr pub_ci_compressed;
 
   camera_info_manager::CameraInfoManager cim;
 
@@ -233,6 +234,7 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options) : Node("camera", opti
   pub_image_compressed =
     this->create_publisher<sensor_msgs::msg::CompressedImage>("~/image_raw/compressed", 1);
   pub_ci = this->create_publisher<sensor_msgs::msg::CameraInfo>("~/camera_info", 1);
+  pub_ci_compressed = this->create_publisher<sensor_msgs::msg::CameraInfo>("~/image_raw/camera_info", 1);
 
   // start camera manager and check for cameras
   camera_manager.start();
@@ -687,6 +689,7 @@ CameraNode::process(libcamera::Request *const request)
       sensor_msgs::msg::CameraInfo ci = cim.getCameraInfo();
       ci.header = hdr;
       pub_ci->publish(ci);
+      pub_ci_compressed->publish(ci);
     }
     else if (request->status() == libcamera::Request::RequestCancelled) {
       RCLCPP_ERROR_STREAM(get_logger(), "request '" << request->toString() << "' cancelled");
