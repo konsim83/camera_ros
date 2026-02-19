@@ -46,6 +46,7 @@
 #include <rclcpp/parameter.hpp>
 #include <rclcpp/parameter_value.hpp>
 #include <rclcpp/publisher.hpp>
+#include <rclcpp/qos.hpp>
 #include <rclcpp/time.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
 #include <regex>
@@ -305,10 +306,11 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
   }
 
   // publisher for raw and compressed image
-  pub_image = this->create_publisher<sensor_msgs::msg::Image>("~/image_raw", 1);
+  const auto image_qos = rclcpp::SensorDataQoS().keep_last(5).best_effort();
+  pub_image = this->create_publisher<sensor_msgs::msg::Image>("~/image_raw", image_qos);
   pub_image_compressed =
-    this->create_publisher<sensor_msgs::msg::CompressedImage>("~/image_raw/compressed", 1);
-  pub_ci = this->create_publisher<sensor_msgs::msg::CameraInfo>("~/camera_info", 1);
+    this->create_publisher<sensor_msgs::msg::CompressedImage>("~/image_raw/compressed", image_qos);
+  pub_ci = this->create_publisher<sensor_msgs::msg::CameraInfo>("~/camera_info", image_qos);
 
   // start camera manager and check for cameras
   camera_manager.start();
