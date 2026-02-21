@@ -100,6 +100,7 @@ private:
   int64_t time_offset = 0;
   std::atomic<unsigned int> last_sequence = 0;
   std::atomic<uint64_t> last_timestamp = 0;
+  std::mutex publish_mutex;
 
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_image;
   rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr pub_image_compressed;
@@ -306,7 +307,7 @@ CameraNode::CameraNode(const rclcpp::NodeOptions &options)
   }
 
   // publisher for raw and compressed image
-  const auto image_qos = rclcpp::SensorDataQoS().keep_last(5).best_effort();
+  const auto image_qos = rclcpp::SensorDataQoS().keep_last(10).reliable();
   pub_image = this->create_publisher<sensor_msgs::msg::Image>("~/image_raw", image_qos);
   pub_image_compressed =
     this->create_publisher<sensor_msgs::msg::CompressedImage>("~/image_raw/compressed", image_qos);
@@ -681,12 +682,15 @@ CameraNode::process(libcamera::Request *const request)
                                  stream->configuration().pixelFormat.toString());
       }
 
-      pub_image->publish(std::move(msg_img));
-      pub_image_compressed->publish(std::move(msg_img_compressed));
+      {
+        std::scoped_lock publish_lock(publish_mutex);
+        pub_image->publish(std::move(msg_img));
+        pub_image_compressed->publish(std::move(msg_img_compressed));
 
-      sensor_msgs::msg::CameraInfo ci = cim.getCameraInfo();
-      ci.header = hdr;
-      pub_ci->publish(ci);
+        sensor_msgs::msg::CameraInfo ci = cim.getCameraInfo();
+        ci.header = hdr;
+        pub_ci->publish(ci);
+      }
     }
     else if (request->status() == libcamera::Request::RequestCancelled) {
       RCLCPP_ERROR_STREAM(get_logger(), "request '" << request->toString() << "' cancelled");
